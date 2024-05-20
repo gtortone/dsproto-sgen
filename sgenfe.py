@@ -158,13 +158,19 @@ if __name__ == "__main__":
         if c.odb_exists(f"/Equipment/{equip_name}/Common/Frontend name"):
             fename = c.odb_get(f"/Equipment/{equip_name}/Common/Frontend name")
 
-            if c.odb_get(f"/Equipment/{equip_name}"):
-                for cid in c.odb_get(f'/System/Clients'):
-                    if c.odb_get(f'/System/Clients/{cid}/Name') == fename:
-                        c.msg(f"{equip_name} already running on MIDAS server, please change frontend index")
-                        sys.exit(-1)
+            clients = c.odb_get(f'/System/Clients', recurse_dir=False)
+            for cid in clients:
+                client_name = ""
+                try:
+                    client_name = c.odb_get(f'/System/Clients/{cid}/Name')
+                except Exception as e:
+                    continue
 
-            c.odb_delete("/Programs/sgen")
+                if client_name == fename:
+                    c.msg(f"{equip_name} already running on MIDAS server, please change frontend index")
+                    sys.exit(-1)
+
+        c.odb_delete("/Programs/sgen")
 
     fe = SGENFrontend(args.model)
     fe.run()
