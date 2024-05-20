@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html class="mcss">
+<head>
+   <meta charset="UTF-8">
+   <link rel="stylesheet" href="midas.css">
+   <script src="controls.js"></script>
+   <script src="midas.js"></script>
+   <script src="mhttpd.js"></script>
+   <title>Agilent 33250A</title>
+
+   <style>
+      .mtable td { padding: 5px; }
+   </style>
+
+   <script>
+      function check_fe_running() {
+         var path = "/System/Clients";
+         mjsonrpc_db_get_value(path).then(
+            function(rpc) {
+               let sgen_running = false;
+               if (rpc.result.status[0] == 1) {
+                  let clients = rpc.result.data[0];
+                  for (let key in clients) {
+                     if (key.endsWith("/name")) {
+                        continue;
+                     }
+                  
+                     if (clients[key].name.startsWith("SGEN-33250A")) {
+                        sgen_running = true;
+                     }
+                  }
+               }
+              
+               if (!sgen_running) {
+                  document.getElementById("sgen_fe_stopped").style.display = "block";
+               } else {
+                  document.getElementById("sgen_fe_stopped").style.display = "none";
+               }
+               setTimeout(check_fe_running, 5000);
+            }).catch(function(error) {
+              mjsonrpc_error_alert(error);
+              setTimeout(check_fe_running, 5000);
+            });
+      }
+
+      function init() {
+         check_fe_running(); 
+         mhttpd_init('SGEN');
+      }
+      
+
+   </script>
+
+</head>
+
+<body class="mcss" onload="init();">
+
+<div id="mheader"></div>
+<div id="msidenav"></div>
+
+<div id="mmain">
+
+  <table>
+      <tr>
+         <td style="vertical-align:top; padding-left:10px">
+            <div id="sgen_fe_stopped" style="display:none;" class="mred mfont">
+               The SGEN driver program is not running! Go to the <a href="?cmd=Programs">Programs page</a>
+               and start the SGEN program!
+            </div>
+         </td>
+      </tr>
+      
+   </table>
+   <table class="mtable" style="width: 60%">
+      <tr>
+         <th colspan="6" class="mtableheader"><b>SGEN - Agilent 33250A</b></th>
+      </tr>
+      <tr>
+         <td><b>SHAPE</b></td>
+         <td style="width: 80%">
+            <table class="mtable" style="width: 100%">
+               <tr>
+                  <th></th>
+               </tr>
+               <tr>
+                  <td>
+                     <div align="center">
+                        <select class="modbselect" data-odb-path="/Equipment/SGEN-33250A-01/Settings/shape">
+                           <option value="SIN">SIN</option>
+                           <option value="PULS">PULSE</option>
+                        </select>
+                     </div>
+                  </td>   
+               </tr>
+            </table>
+         </td>
+      </tr>
+      <tr>
+         <td><b>PARAMETERS</b></td>
+         <td style="width: 80%">
+            <table class="mtable" style="width: 100%">
+               <tr>
+                  <th>pulse width (s)</th>
+                  <th>frequency (Hz)</th>
+                  <th>Vlow</th>
+                  <th>Vhigh</th>
+               </tr>
+               <tr>
+                  <td>
+                     <div class="modbvalue" data-odb-editable="1" data-odb-path="/Equipment/SGEN-33250A-01/Settings/pulse/width" align="center"/>
+                  </td>   
+                  <td>
+                     <div class="modbvalue" data-odb-editable="1" data-odb-path="/Equipment/SGEN-33250A-01/Settings/frequency" align="center"/>
+                  </td>   
+                  <td>
+                     <div class="modbvalue" data-odb-editable="1" data-odb-path="/Equipment/SGEN-33250A-01/Settings/Vlow" align="center"/>
+                  </td>   
+                  <td>
+                     <div class="modbvalue" data-odb-editable="1" data-odb-path="/Equipment/SGEN-33250A-01/Settings/Vhigh" align="center"/>
+                  </td>   
+               </tr>
+            </table>
+         </td>
+      </tr>
+      <tr>
+         <td><b>Output</b></td>
+         <td>
+            <div align="center">
+               <select class="modbselect" data-odb-path="/Equipment/SGEN-33250A-01/Settings/output">
+                  <option value="false">OFF</option>
+                  <option value="true">ON</option>
+               </select>
+            </div>
+         </td>
+      </tr>
+   </table>
+</div>
+</body>
+</html>
