@@ -11,12 +11,7 @@ from utils import flatten_dict
 
 class SGEN(midas.frontend.EquipmentBase):
 
-    def __init__(self, client, session, model):
-
-        self.session = session
-        self.sgen = SGENFactory(model, session)
-
-        equip_name = f'SGEN-{model}-{str(midas.frontend.frontend_index).zfill(2)}'
+    def __init__(self, client, model):
 
         default_common = midas.frontend.InitialEquipmentCommon()
         default_common.equip_type = midas.EQ_PERIODIC
@@ -27,9 +22,53 @@ class SGEN(midas.frontend.EquipmentBase):
         default_common.read_when = midas.RO_ALWAYS
         default_common.log_history = 1
 
+        equip_name = f'SGEN-{model}-{str(midas.frontend.frontend_index).zfill(2)}'
+        self.sgen = SGENFactory(model)
+
         midas.frontend.EquipmentBase.__init__(self, client, equip_name, default_common, self.sgen.getSettingsSchema());
 
+        port = self.settings['port']
+
+        if port == "":
+            self.client.msg(f"please set port device to /Equipment/{equip_name}/Settings/port", is_error=True)
+            self.client.communicate(1000)
+            sys.exit(-1)
+
+        # lookup for PSU on USB port
+        rm = ResourceManager()
+        dev = f'ASRL{port}::INSTR'
+
+        self.session = None
+        try:
+            self.session = rm.open_resource(dev, baud_rate = 9600, data_bits = 7, parity = constants.Parity.even,
+                        flow_control = constants.VI_ASRL_FLOW_NONE, stop_bits = constants.StopBits.two)
+        except Exception as e:
+            self.client.communicate(1000)
+            self.client.msg(f"{e}", is_error=True)
+            sys.exit(-1)
+
+        self.session.read_termination = '\n'
+        self.session.write_termination = '\n'
+
+        readmodel = None
+        try:
+            readmodel = self.session.query('*CLS; *IDN?').split(',')[1]
+        except Exception as e:
+            self.client.msg(f"No device found on {port}", is_error=True)
+            self.client.communicate(1000)
+            sys.exit(-1)
+
+        if model == readmodel:
+            self.client.msg(f"SGEN {model} found on {port}")
+        else:
+            self.client.msg(f"SGEN {model} not found on {port}", is_error=True)
+            self.client.communicate(1000)
+            sys.exit(-1)
+
         self.odb_readback_dir = f"/Equipment/{equip_name}/Readback"
+
+        self.sgen.setSession(self.session)
+        self.sgen.reset()
 
         self.updateODB()
 
@@ -80,6 +119,7 @@ class SGEN(midas.frontend.EquipmentBase):
         readback = self.sgen.getReadbackSchema()
         settings = self.sgen.getSettingsSchema()
 
+        settings['port'] = self.settings['port']
         settings['shape'] = self.sgen.getShape()
         readback['output'] = settings['output'] = self.sgen.getOutput()
         readback['frequency'] = settings['frequency'] = self.sgen.getFrequency()
@@ -98,40 +138,19 @@ class SGEN(midas.frontend.EquipmentBase):
 
 class SGENFrontend(midas.frontend.FrontendBase):
 
-    def __init__(self, session, model):
+    def __init__(self, model):
         if(midas.frontend.frontend_index == -1):
             print("set frontend index with -i option")
             sys.exit(-1)
-        midas.frontend.FrontendBase.__init__(self, f"SGEN-{model}")
-        self.add_equipment(SGEN(self.client, session, model))
+        midas.frontend.FrontendBase.__init__(self, f"SGEN-{model}-{str(midas.frontend.frontend_index).zfill(2)}")
+        self.add_equipment(SGEN(self.client, model))
 
 if __name__ == "__main__":
     parser = midas.frontend.parser
-    parser.add_argument("--port", default="/dev/ttyUSB0")
     parser.add_argument("--model", required=True, choices = [m.value[0] for m in SGENModel])
     args = midas.frontend.parse_args()
 
-    # lookup for PSU on USB port
-    rm = ResourceManager()
-    dev = f'ASRL{args.port}::INSTR'
-    session = rm.open_resource(dev, baud_rate = 9600, data_bits = 7, parity = constants.Parity.even,
-                flow_control = constants.VI_ASRL_FLOW_NONE, stop_bits = constants.StopBits.two)
-    session.read_termination = '\n'
-    session.write_termination = '\n'
-
-    try:
-        model = session.query('*IDN?').split(',')[1]
-    except Exception as e:
-        print(f"E: {e}")
-        sys.exit(-1)
-
-    if model == args.model:
-        print(f"I: SGEN {model} found on {args.port}")
-    else:
-        print(f"E: SGEN {args.model} not found on {args.port}")
-        sys.exit(-1)
-
-    equip_name = f'SGEN-{model}-{str(midas.frontend.frontend_index).zfill(2)}'
+    equip_name = f'SGEN-{args.model}-{str(midas.frontend.frontend_index).zfill(2)}'
 
     # check if a SGEN frontend is running with same model and id
     with midas.client.MidasClient("sgen") as c:
@@ -145,5 +164,7 @@ if __name__ == "__main__":
                         c.msg(f"{equip_name} already running on MIDAS server, please change frontend index")
                         sys.exit(-1)
 
-    fe = SGENFrontend(session, model)
+            c.odb_delete("/Programs/sgen")
+
+    fe = SGENFrontend(args.model)
     fe.run()

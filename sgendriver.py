@@ -1,8 +1,8 @@
 from enum import Enum
 
 class SGENDevice:
-    def __init__(self, session):
-        self.session = session
+    def __init__(self):
+        self.session = None
 
     def query(self, cmd):
         res = ""
@@ -25,12 +25,15 @@ class SGENDevice:
         self.write("*RST")
         self.write("*CLS")
 
+    def setSession(self, session):
+        self.session = session
+
 class SGENModel(Enum):
     A33250A = '33250A',
 
 class SGENAgilent33250A(SGENDevice):
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self):
+        super().__init__()
 
         self.model = SGENModel.A33250A
         self.modelname = '33250A'
@@ -38,6 +41,7 @@ class SGENAgilent33250A(SGENDevice):
         self.shapelist = [ "SIN", "SQU", "RAMP", "PULS", "NOIS", "DC", "USER" ]
 
         self.settings = {
+            "port" : "",
             "brand" : self.brand,
             "model" : self.modelname,
             "output" : False,
@@ -59,8 +63,6 @@ class SGENAgilent33250A(SGENDevice):
                 "width" : 0.0,
             }
         }
-
-        self.reset()
 
     def getSettingsSchema(self):
         return self.settings
@@ -123,8 +125,8 @@ class SGENAgilent33250A(SGENDevice):
         errorCode = line.split(',')[0]
         return (int(errorCode), line)
 
-def SGENFactory(model, session):
+def SGENFactory(model):
     if model not in [m.value[0] for m in SGENModel]:
         raise TypeError
     if model == '33250A':
-        return SGENAgilent33250A(session)
+        return SGENAgilent33250A()
