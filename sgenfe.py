@@ -82,15 +82,21 @@ class SGEN(midas.frontend.EquipmentBase):
         event = midas.event.Event()
 
         func = self.sgen.getShape()
-
-        data = [float] * 8
-        data[0] = float(self.sgen.getFrequency())
-        data[1] = float(self.sgen.getVoltageHigh())
-        data[2] = float(self.sgen.getVoltageLow())
-        data[3] = float(self.sgen.getOutput())
+        
+        data = []
+        data.append(float(self.sgen.getFrequency()))
+        data.append(float(self.sgen.getVoltageHigh()))
+        data.append(float(self.sgen.getVoltageLow()))
+        data.append(float(self.sgen.getOutput()))
 
         if func == "PULS":
-            data[4] = float(self.sgen.getPulseWidth())
+            data.append(float(self.sgen.getPulseWidth()))
+        else:
+            data.append(0)
+
+        data.append(0)
+        data.append(0)
+        data.append(0)
         
         event.create_bank("FUNC", midas.TID_INT32, [self.sgen.getShapeIndex()])
         event.create_bank("PARA", midas.TID_FLOAT, data)
