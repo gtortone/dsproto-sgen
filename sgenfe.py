@@ -92,11 +92,11 @@ class SGEN(midas.frontend.EquipmentBase):
         if func == "PULS":
             data.append(float(self.sgen.getPulseWidth()))
         else:
-            data.append(0)
+            data.append(0.0)
 
-        data.append(0)
-        data.append(0)
-        data.append(0)
+        data.append(0.0)
+        data.append(0.0)
+        data.append(0.0)
         
         event.create_bank("FUNC", midas.TID_INT32, [self.sgen.getShapeIndex()])
         event.create_bank("PARA", midas.TID_FLOAT, data)
