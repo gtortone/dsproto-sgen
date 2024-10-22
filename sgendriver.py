@@ -22,7 +22,7 @@ class SGENDevice:
             print(f'E: {e}')
 
     def reset(self):
-        self.write("*RST")
+        #self.write("*RST")
         self.write("*CLS")
 
     def setSession(self, session):
